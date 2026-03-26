@@ -1,0 +1,149 @@
+:root {
+    --ns-primary: #0d6efd;
+    --ns-dark: #1a1a2e;
+    --ns-accent: #e94560;
+    --ns-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+body {
+    background-color: #f4f6fb;
+    min-height: 100vh;
+}
+
+/* Stat numbers */
+.stat-number {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+/* Card enhancements */
+.card {
+    border-radius: 10px;
+    box-shadow: var(--ns-card-shadow);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 0.02em;
+}
+
+/* Code blocks */
+code {
+    font-size: 0.8rem;
+    background: #f0f2f5;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #c7254e;
+}
+
+/* Footer */
+.footer {
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+}
+
+/* Badge tweaks */
+.badge {
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+}
+
+/* Table */
+.table th {
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Host card highlight */
+.host-card {
+    border-left: 4px solid var(--ns-primary);
+}
+
+.host-card.border-secondary {
+    border-left-color: #6c757d;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+
+    .card {
+        background-color: #1e1e1e;
+        border-color: #333;
+        color: #e0e0e0;
+    }
+
+    .card-header {
+        background-color: #252525;
+        border-color: #333;
+    }
+
+    .table {
+        color: #e0e0e0;
+        --bs-table-bg: #1e1e1e;
+        --bs-table-striped-bg: #252525;
+        --bs-table-hover-bg: #2a2a2a;
+        --bs-table-border-color: #333;
+    }
+
+    .form-control, .form-select {
+        background-color: #2a2a2a;
+        border-color: #444;
+        color: #e0e0e0;
+    }
+
+    .form-control:focus, .form-select:focus {
+        background-color: #333;
+        color: #e0e0e0;
+    }
+
+    code {
+        background: #333;
+        color: #ff7b72;
+    }
+
+    .navbar {
+        background-color: #0d0d0d !important;
+    }
+
+    .footer {
+        background-color: #0d0d0d !important;
+        border-color: #333;
+    }
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+    .stat-number {
+        font-size: 1.6rem;
+    }
+}
+
+/* Spinner overlay */
+.scan-spinner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+.scan-spinner.active {
+    display: flex;
+}

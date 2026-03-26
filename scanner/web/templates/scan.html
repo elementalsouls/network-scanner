@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}New Scan - Network Scanner{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2><i class="bi bi-search"></i> New Scan</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header">Scan Configuration</div>
+            <div class="card-body">
+                <form id="scanForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target <span class="text-danger">*</span></label>
+                        <input type="text" id="target" class="form-control"
+                               placeholder="192.168.1.0/24 or 10.0.0.1 or hostname.local" required>
+                        <div class="form-text">IP address, CIDR range, IP-IP range, or hostname</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Scan Profile</label>
+                        <select id="profile" class="form-select" onchange="applyProfile(this.value)">
+                            <option value="">Custom</option>
+                            <option value="quick">Quick - Top 100 ports</option>
+                            <option value="full">Full - All 65535 ports</option>
+                            <option value="stealth">Stealth - SYN scan</option>
+                            <option value="service">Service Detection</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ports</label>
+                        <input type="text" id="ports" class="form-control" value="top100"
+                               placeholder="top100, top1000, all, 22-443, 80,443,8080">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Scan Type</label>
+                            <select id="scanType" class="form-select">
+                                <option value="connect">TCP Connect</option>
+                                <option value="syn">TCP SYN (root)</option>
+                                <option value="udp">UDP</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Timeout (s)</label>
+                            <input type="number" id="timeout" class="form-control" value="3" min="1" max="30">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Threads</label>
+                            <input type="number" id="maxThreads" class="form-control" value="100" min="1" max="500">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="serviceDetection">
+                            <label class="form-check-label" for="serviceDetection">Service Detection</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="osDetection">
+                            <label class="form-check-label" for="osDetection">OS Detection</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100" id="startBtn">
+                        <i class="bi bi-play-fill"></i> Start Scan
+                    </button>
+                </form>
+
+                <div id="scanStatus" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header">Profile Reference</div>
+            <div class="card-body">
+                <dl>
+                    <dt>quick</dt><dd class="text-muted small">Fast scan of top 100 common ports</dd>
+                    <dt>full</dt><dd class="text-muted small">All 65535 ports with service/OS detection</dd>
+                    <dt>stealth</dt><dd class="text-muted small">SYN scan with rate limiting (requires root)</dd>
+                    <dt>service</dt><dd class="text-muted small">Top 1000 ports with service detection</dd>
+                </dl>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header">Target Examples</div>
+            <div class="card-body">
+                <ul class="list-unstyled small text-muted">
+                    <li><code>192.168.1.1</code> - Single host</li>
+                    <li><code>192.168.1.0/24</code> - Class C subnet</li>
+                    <li><code>192.168.1.1-254</code> - IP range</li>
+                    <li><code>10.0.0.0/8</code> - Class A (slow!)</li>
+                    <li><code>router.local</code> - Hostname</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const profiles = {
+    quick:   { ports: 'top100', scanType: 'connect', timeout: 2, maxThreads: 200, service: false, os: false },
+    full:    { ports: 'all',    scanType: 'connect', timeout: 5, maxThreads: 100, service: true,  os: true  },
+    stealth: { ports: 'top1000', scanType: 'syn',   timeout: 3, maxThreads: 50,  service: false, os: false },
+    service: { ports: 'top1000', scanType: 'connect', timeout: 5, maxThreads: 100, service: true, os: true },
+};
+
+function applyProfile(name) {
+    if (!profiles[name]) return;
+    const p = profiles[name];
+    document.getElementById('ports').value = p.ports;
+    document.getElementById('scanType').value = p.scanType;
+    document.getElementById('timeout').value = p.timeout;
+    document.getElementById('maxThreads').value = p.maxThreads;
+    document.getElementById('serviceDetection').checked = p.service;
+    document.getElementById('osDetection').checked = p.os;
+}
+
+document.getElementById('scanForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('startBtn');
+    const statusEl = document.getElementById('scanStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Starting...';
+
+    const payload = {
+        target: document.getElementById('target').value.trim(),
+        ports: document.getElementById('ports').value,
+        scan_type: document.getElementById('scanType').value,
+        timeout: parseFloat(document.getElementById('timeout').value),
+        max_threads: parseInt(document.getElementById('maxThreads').value),
+        service_detection: document.getElementById('serviceDetection').checked,
+        os_detection: document.getElementById('osDetection').checked,
+        profile: document.getElementById('profile').value || null,
+    };
+
+    try {
+        const resp = await fetch('/api/scan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.scan_id) {
+            statusEl.innerHTML = `<div class="alert alert-success">
+                Scan started! <strong>ID: ${data.scan_id}</strong><br>
+                <a href="/results/${data.scan_id}" class="btn btn-sm btn-primary mt-2">View Results</a>
+            </div>`;
+        } else {
+            statusEl.innerHTML = `<div class="alert alert-danger">${data.error || 'Unknown error'}</div>`;
+        }
+    } catch(err) {
+        statusEl.innerHTML = `<div class="alert alert-danger">Request failed: ${err.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill"></i> Start Scan';
+    }
+});
+</script>
+{% endblock %}

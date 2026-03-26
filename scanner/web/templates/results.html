@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Results - {{ result.target }} - Network Scanner{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+    <div class="col">
+        <h2><i class="bi bi-clipboard-data"></i> Scan Results: <code>{{ result.target }}</code></h2>
+        <p class="text-muted mb-0">
+            ID: {{ result.scan_id }}
+            {% if result.profile %}
+            &nbsp;<span class="badge bg-secondary">{{ result.profile }}</span>
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('views.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="stat-number text-success">{{ result_dict.alive_hosts }}</div>
+            <div class="text-muted small">Alive Hosts</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="stat-number text-primary">{{ result_dict.hosts_found }}</div>
+            <div class="text-muted small">Total Hosts</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="stat-number text-warning">{{ result_dict.total_open_ports }}</div>
+            <div class="text-muted small">Open Ports</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="stat-number text-info">
+                {% if result_dict.duration %}{{ "%.1f"|format(result_dict.duration) }}s{% else %}N/A{% endif %}
+            </div>
+            <div class="text-muted small">Duration</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="mb-3">
+    <input type="text" id="filterInput" class="form-control" placeholder="Filter by IP, hostname, service...">
+</div>
+
+<!-- Host Results -->
+{% for host in result_dict.hosts %}
+{% if host.is_alive %}
+<div class="card mb-3 shadow-sm host-card" data-search="{{ host.ip }} {{ host.hostname or '' }} {{ host.os or '' }} {{ host.vendor or '' }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <strong class="text-primary">{{ host.ip }}</strong>
+            {% if host.hostname %}<span class="text-muted ms-2">({{ host.hostname }})</span>{% endif %}
+            <span class="badge bg-success ms-2">Alive</span>
+        </div>
+        <div class="text-end text-muted small">
+            {% if host.os %}<span class="badge bg-info text-dark me-1">{{ host.os }}</span>{% endif %}
+            {% if host.vendor %}<span class="badge bg-secondary me-1">{{ host.vendor }}</span>{% endif %}
+            {% if host.mac %}<code>{{ host.mac }}</code>{% endif %}
+            {% if host.response_time %}<span class="ms-2">{{ "%.1f"|format(host.response_time) }}ms</span>{% endif %}
+        </div>
+    </div>
+    {% set open_ports = host.ports | selectattr('state', 'equalto', 'open') | list %}
+    {% if open_ports %}
+    <div class="card-body p-0">
+        <table class="table table-sm table-striped mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Port</th><th>Protocol</th><th>State</th>
+                    <th>Service</th><th>Version</th><th>Banner</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for port in open_ports | sort(attribute='number') %}
+                <tr>
+                    <td><strong>{{ port.number }}</strong></td>
+                    <td>{{ port.protocol | upper }}</td>
+                    <td><span class="badge bg-success">{{ port.state }}</span></td>
+                    <td>{{ port.service or '' }}</td>
+                    <td><small>{{ port.version or '' }}</small></td>
+                    <td><code class="small">{{ (port.banner or '')[:80] }}</code></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body text-muted small">No open ports found.</div>
+    {% endif %}
+</div>
+{% endif %}
+{% endfor %}
+
+{% for host in result_dict.hosts %}
+{% if not host.is_alive %}
+<div class="card mb-2 shadow-sm border-secondary host-card" data-search="{{ host.ip }}">
+    <div class="card-body py-2 text-muted">
+        <span class="badge bg-secondary me-2">Down</span>{{ host.ip }}
+        {% if host.hostname %}<small>({{ host.hostname }})</small>{% endif %}
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterInput').addEventListener('input', function() {
+    const val = this.value.toLowerCase();
+    document.querySelectorAll('.host-card').forEach(card => {
+        const searchText = card.dataset.search.toLowerCase() + card.textContent.toLowerCase();
+        card.style.display = searchText.includes(val) ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

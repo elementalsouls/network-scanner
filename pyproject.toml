@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "network-scanner"
+version = "1.0.0"
+description = "A powerful cross-platform network scanning tool"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{name = "Network Scanner Contributors"}]
+license = {text = "MIT"}
+
+[tool.black]
+line-length = 120
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true

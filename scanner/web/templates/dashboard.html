@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Network Scanner{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('views.scan_page') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> New Scan
+        </a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stat-number text-primary">{{ stats.total_scans or 0 }}</div>
+                <div class="text-muted">Total Scans</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stat-number text-success">{{ stats.total_alive_hosts or 0 }}</div>
+                <div class="text-muted">Hosts Discovered</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stat-number text-warning">{{ stats.total_open_ports or 0 }}</div>
+                <div class="text-muted">Open Ports Found</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="stat-number text-info">
+                    {% if stats.avg_duration %}
+                        {{ "%.1f"|format(stats.avg_duration) }}s
+                    {% else %}N/A{% endif %}
+                </div>
+                <div class="text-muted">Avg Duration</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Scan Form -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header">
+        <i class="bi bi-lightning-charge"></i> Quick Scan
+    </div>
+    <div class="card-body">
+        <form id="quickScanForm" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Target (IP, CIDR, or hostname)</label>
+                <input type="text" id="quickTarget" class="form-control" placeholder="192.168.1.0/24">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Profile</label>
+                <select id="quickProfile" class="form-select">
+                    <option value="quick">Quick (top 100)</option>
+                    <option value="service">Service Detection</option>
+                    <option value="full">Full Scan</option>
+                    <option value="stealth">Stealth</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Scan
+                </button>
+            </div>
+        </form>
+        <div id="quickScanStatus" class="mt-2"></div>
+    </div>
+</div>
+
+<!-- Recent Scans Table -->
+<div class="card shadow-sm">
+    <div class="card-header">
+        <i class="bi bi-clock-history"></i> Recent Scans
+    </div>
+    <div class="card-body p-0">
+        {% if scans %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Target</th>
+                        <th>Profile</th>
+                        <th>Started</th>
+                        <th>Duration</th>
+                        <th>Alive Hosts</th>
+                        <th>Open Ports</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                    <tr>
+                        <td><strong>{{ scan.target }}</strong></td>
+                        <td>
+                            {% if scan.profile %}
+                            <span class="badge bg-secondary">{{ scan.profile }}</span>
+                            {% else %}<span class="text-muted">-</span>{% endif %}
+                        </td>
+                        <td>{{ scan.start_time or '-' }}</td>
+                        <td>{{ "%.1f"|format(scan.duration) ~ 's' if scan.duration else '-' }}</td>
+                        <td><span class="badge bg-success">{{ scan.alive_hosts }}</span></td>
+                        <td><span class="badge bg-warning text-dark">{{ scan.total_open_ports }}</span></td>
+                        <td>
+                            {% if scan.error %}
+                            <span class="badge bg-danger">Error</span>
+                            {% else %}
+                            <span class="badge bg-success">Complete</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('views.results_page', scan_id=scan.scan_id) }}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1"></i>
+            <p class="mt-2">No scans yet. Start your first scan!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('quickScanForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const target = document.getElementById('quickTarget').value.trim();
+    const profile = document.getElementById('quickProfile').value;
+    if (!target) return;
+    const statusEl = document.getElementById('quickScanStatus');
+    statusEl.innerHTML = '<div class="spinner-border spinner-border-sm"></div> Starting scan...';
+    try {
+        const resp = await fetch('/api/scan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({target, profile})
+        });
+        const data = await resp.json();
+        if (data.scan_id) {
+            statusEl.innerHTML = `<div class="alert alert-info">Scan started! <a href="/results/${data.scan_id}">Track progress</a> (ID: ${data.scan_id})</div>`;
+        } else {
+            statusEl.innerHTML = `<div class="alert alert-danger">${data.error || 'Failed to start scan'}</div>`;
+        }
+    } catch(err) {
+        statusEl.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  scanner:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - scanner-data:/app/data
+    environment:
+      - FLASK_ENV=production
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+
+volumes:
+  scanner-data:
